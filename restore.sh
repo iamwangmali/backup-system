@@ -227,7 +227,7 @@ update_fstab() {
 	sed -i "s/$old_efi_uuid/UUID=$EFIUUID/" $MNTPT/etc/fstab
 }
 
-sync_files() {
+async_files() {
 	rsync -aAXv / $MNTPT --ignore-existing \
 		--exclude=/{proc,sys,dev} \
 		--exclude=/{etc,run,var,tmp} \
@@ -275,6 +275,6 @@ choose_disk
 get_partition_sizes "$TARGETDISK"
 confirm_and_partition "$TARGETDISK" "$EFISIZE" "$SWAPSIZE" "$ROOTSIZE"
 mount_partitions
-sync_files
+async_files
 update_boot
 reboot_liveOS
