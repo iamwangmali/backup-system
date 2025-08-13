@@ -1,5 +1,5 @@
-EXCLUDES="/dev/* /proc/* /sys/*"
-EXCLUDES="$EXCLUDES /tmp/* /run/* /var/*"
+EXCLUDES="/dev /proc /sys"
+#EXCLUDES="$EXCLUDES /tmp /run /var"
 EXCLUDES="$EXCLUDES /cdrom /lost+found /mnt /media /opt"
 EXCLUDES="$EXCLUDES /swapfile"
 EXCLUDES="$EXCLUDES /home/* /root/*"
@@ -26,7 +26,7 @@ mkdir -p $ISODIR/{casper,install,preseed}
 
 
 mkdir -p $DUMMYSYS/etc/casper        #check if necessary
-mkdir -p $DUMMYSYS/{dev,proc,sys}
+#mkdir -p $DUMMYSYS/{dev,proc,sys}
 mkdir -p $DUMMYSYS/{tmp,run,var}
 mkdir -p $DUMMYSYS/{mnt,media}
 chmod ug+rwx,o+rwt $DUMMYSYS/tmp
@@ -66,15 +66,12 @@ cp ./restore.sh $DUMMYSYS/sbin/
 #################################finish sync files##############################
 
 # bootloader localization 
-local EnterOrTab="Press ENTER to choose or TAB to edit a menu entry" 
-local LiveCD="Live CD"   
-local LiveCDFailSafe="(fail safe)" 
-local ChainBoot="Boot from hard disk"
-local MemTest="Memory Test (Memtest86)" 
-local MemTestPlus="Memory Test (Memtest86+)"  
+TRYLIVECD="try or install ubuntu22.04"
+LiveCDFailSafe="(fail safe)"
+MemTestPlus="Memory Test (Memtest86+)"
 
 
-cp /boot/memtest86+.bin $ISODIR/
+cp /boot/memtest86+.bin $ISODIR/boot/
 
 mkdir -p $ISODIR/boot/grub
 #mkdir -p $ISODIR/usr/share/grub
@@ -85,14 +82,10 @@ cp util/grub/grub.cfg $ISODIR/boot/grub/grub.cfg
 cp util/grub/splash.png $ISODIR/boot/grub/grub.png
 
 grubcfg="$ISODIR/boot/grub/grub.cfg"
-langshort=$(locale | grep -w 'LANG' | cut -d= -f2 | cut -d. -f1) # pt_BR not pt_BR.UTF-8
 
 # grub.cfg translation
-sed -i -e 's/__LANGUAGE__/'"$langshort"'/g' "$grubcfg"
-sed -i -e 's/__LIVECDLABEL__/'"$LIVECDLABEL"'/g' "$grubcfg"
-sed -i -e 's/__LIVECDFAILSAFE__/'"$LIVECDLABEL $LiveCDFailSafe"'/g' "$grubcfg"
-sed -i -e 's/__CHAINBOOT__/'"$ChainBoot"'/g' "$grubcfg"
-sed -i -e 's/__MEMTEST__/'"$MemTest"'/g' "$grubcfg"
+sed -i -e 's/__LIVECDLABEL__/'"$TRYLIVECD"'/g' "$grubcfg"
+sed -i -e 's/__LIVECDFAILSAFE__/'"$TRYLIVECD $LiveCDFailSafe"'/g' "$grubcfg"
 sed -i -e 's/__MEMTESTPLUS__/'"$MemTestPlus"'/g' "$grubcfg"
 
 if [ ! -d /etc/plymouth ]; then
@@ -199,7 +192,4 @@ grub-mkrescue \
 				-map $ISODIR / 2>>$WORKDIR/remastersys.log 1>>$WORKDIR/remastersys.log
 
 md5sum $WORKDIR/$CUSTOMISO > $WORKDIR/$CUSTOMISO.md5
-
-
-
 	
