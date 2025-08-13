@@ -43,7 +43,7 @@ choose_disk() {
 	echo "scanning available disks..."
 	
     # get disk list without loop and ramdisk
-    local disks_info=$(lsblk -d -o NAME,SIZE,TYPE -n -p -e 7,11)
+    local disks_info=$(lsblk -d -o NAME,SIZE,TYPE -n -p -e 2,7,11)
     
     local menu_items=()
     while read -r name size type; do
