@@ -220,8 +220,6 @@ update_fstab() {
 	local EFIUUID=$(lsblk -no UUID $EFIPATH)
 	local ROOTUUID=$(lsblk -no UUID $ROOTPATH)
 
-	mkdir $MNTPT/etc
-	cp /etc/fstab $MNTPT/etc/fstab
 	local old_root_uuid=$(cat $MNTPT/etc/fstab  | grep UUID | grep ext4 | awk '{print $1}')
 	local old_efi_uuid=$(cat $MNTPT/etc/fstab  | grep UUID | grep efi | awk '{print $1}')
 
