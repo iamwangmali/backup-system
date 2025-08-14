@@ -43,7 +43,7 @@ choose_disk() {
 	echo "scanning available disks..."
 	
     # get disk list without loop and ramdisk
-    local disks_info=$(sudo lsblk -d -o NAME,SIZE,TYPE -n -p -e 2,7,11)
+    local disks_info=$(sudo lsblk -d -o NAME,SIZE,TYPE -n -e 2,7,11)
     
     local menu_items=()
     while read -r name size type; do
@@ -78,7 +78,7 @@ choose_disk() {
 # step 2: check partition size
 # =================================================================
 get_partition_sizes() {
-    local device_path=$1
+    local device_path="/dev/$1"
     local total_size_bytes=$(sudo lsblk -dbno SIZE "$device_path")
     local total_size_mib=$((total_size_bytes / 1024 / 1024))
 
@@ -131,7 +131,8 @@ get_partition_sizes() {
 # step 3: partition
 # =================================================================
 confirm_and_partition() {
-    local device_path=$1
+    local device_name=$1
+    local device_path="/dev/$device_name"
     local efi_size=$2
     local swap_size=$3
     local root_size=$4
@@ -164,28 +165,35 @@ confirm_and_partition() {
 	#for GPT, reserve an 1M in tail
 	local root_start_sector=$((efi_start_sector + efi_sectors))
 	local root_sectors=$((root_size * 1024 * 1024 / 512))
-	
+
     # usr sfdisk and Here Document to partition
     sudo sfdisk -f "$device_path" << EOF
 label: gpt
 unit: sectors
 
 #efi partition
-${device_path}1 : start=${efi_start_sector}, size=${efi_sectors}, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, name=efi
+1 : start=${efi_start_sector}, size=${efi_sectors}, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, name=efi
 
 #root partition
-${device_path}2 : start=${root_start_sector}, size=${root_sectors}, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name=root
+2 : start=${root_start_sector}, size=${root_sectors}, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name=root
 EOF
+
+    if [[ "$device_name" =~ ^sd ]]; then
+	    partition_suffix=""
+    elif [[ "$device_name" =~ ^nvme ]]; then
+	partition_suffix="p"
+    fi
+
+    EFIPATH="${device_path}${partition_suffix}1"
+    ROOTPATH="${device_path}${partition_suffix}2"
 
     if [ $? -eq 0 ]; then
 	sudo partprobe $device_path
-        sudo mkfs.fat ${device_path}1
-	echo format ${device_path}1 to fat32 finished
-        sudo mkfs.ext4 -F -q ${device_path}2
-	echo format ${device_path}2 to ext4 finished
+        sudo mkfs.fat $EFIPATH
+	echo format ${EFIPATH} to fat32 finished
+        sudo mkfs.ext4 -F -q $ROOTPATH
+	echo format ${ROOTPATH} to ext4 finished
     fi
-    EFIPATH=${device_path}1
-    ROOTPATH=${device_path}2
     echo "efi partion is $EFIPATH"
     echo "root partion is $ROOTPATH"
 
