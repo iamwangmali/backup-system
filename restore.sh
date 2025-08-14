@@ -21,9 +21,9 @@ MNTPT="/mnt/disk_root"
 
 get_root_disk() {
     local root_disk=""
-    local root_device=$(df / | awk 'NR==2 {print $1}')
+    local root_device=$(sudo df / | awk 'NR==2 {print $1}')
     if [[ "$root_device" != "/cow" ]]; then
-        root_disk=$(lsblk -no PKNAME "$root_device")
+        root_disk=$(sudo lsblk -no PKNAME "$root_device")
 		echo "/dev/$root_disk"
     fi
 }
@@ -43,7 +43,7 @@ choose_disk() {
 	echo "scanning available disks..."
 	
     # get disk list without loop and ramdisk
-    local disks_info=$(lsblk -d -o NAME,SIZE,TYPE -n -p -e 2,7,11)
+    local disks_info=$(sudo lsblk -d -o NAME,SIZE,TYPE -n -p -e 2,7,11)
     
     local menu_items=()
     while read -r name size type; do
@@ -79,7 +79,7 @@ choose_disk() {
 # =================================================================
 get_partition_sizes() {
     local device_path=$1
-    local total_size_bytes=$(lsblk -dbno SIZE "$device_path")
+    local total_size_bytes=$(sudo lsblk -dbno SIZE "$device_path")
     local total_size_mib=$((total_size_bytes / 1024 / 1024))
 
     local recommended_efi=512
@@ -151,8 +151,8 @@ confirm_and_partition() {
     echo "erase old disk info"
 	# delete all the partitions on the disk, and reload partition table
 	#sfdisk --delete $device_path
-	wipefs -a -f $device_path
-	partprobe $device_path
+	sudo wipefs -a -f $device_path
+	sudo partprobe $device_path
 	sleep 1
 
     echo "parting...."
@@ -166,7 +166,7 @@ confirm_and_partition() {
 	local root_sectors=$((root_size * 1024 * 1024 / 512))
 	
     # usr sfdisk and Here Document to partition
-    sfdisk -f "$device_path" << EOF
+    sudo sfdisk -f "$device_path" << EOF
 label: gpt
 unit: sectors
 
@@ -178,10 +178,10 @@ ${device_path}2 : start=${root_start_sector}, size=${root_sectors}, type=0FC63DA
 EOF
 
     if [ $? -eq 0 ]; then
-    	partprobe $device_path
-        mkfs.fat ${device_path}1
+	sudo partprobe $device_path
+        sudo mkfs.fat ${device_path}1
 	echo format ${device_path}1 to fat32 finished
-        mkfs.ext4 -F -q ${device_path}2
+        sudo mkfs.ext4 -F -q ${device_path}2
 	echo format ${device_path}2 to ext4 finished
     fi
     EFIPATH=${device_path}1
@@ -194,26 +194,26 @@ EOF
 mount_partitions() {
 
 	#mount root /
-	mkdir -p $MNTPT
-	mount -o rw $ROOTPATH $MNTPT
+	sudo mkdir -p $MNTPT
+	sudo mount -o rw $ROOTPATH $MNTPT
 
 	#mount efi
-	mkdir -p $MNTPT/boot/efi
-	mount -o rw $EFIPATH $MNTPT/boot/efi
+	sudo mkdir -p $MNTPT/boot/efi
+	sudo mount -o rw $EFIPATH $MNTPT/boot/efi
 
 	#create swapfile
-	fallocate -l 4G $MNTPT/swapfile
-	chmod 600 $MNTPT/swapfile
-	mkswap $MNTPT/swapfile
+	sudo fallocate -l 4G $MNTPT/swapfile
+	sudo chmod 600 $MNTPT/swapfile
+	sudo mkswap $MNTPT/swapfile
 
 	#mount others
-	mkdir -p $MNTPT/{dev,proc,sys}
+	sudo mkdir -p $MNTPT/{dev,proc,sys}
 
-	mount -o bind /proc $MNTPT/proc
-	mount -o bind /dev  $MNTPT/dev
-	mount -o bind /sys  $MNTPT/sys
+	sudo mount -o bind /proc $MNTPT/proc
+	sudo mount -o bind /dev  $MNTPT/dev
+	sudo mount -o bind /sys  $MNTPT/sys
 
-	mkdir -p $MNTPT/{cdrom,lost+found,media,mnt,opt}
+	sudo mkdir -p $MNTPT/{cdrom,lost+found,media,mnt,opt}
 }
 
 update_fstab() {
@@ -223,12 +223,12 @@ update_fstab() {
 	local old_root_uuid=$(cat $MNTPT/etc/fstab  | grep UUID | grep ext4 | awk '{print $1}')
 	local old_efi_uuid=$(cat $MNTPT/etc/fstab  | grep UUID | grep efi | awk '{print $1}')
 
-	sed -i "s/$old_root_uuid/UUID=$ROOTUUID/" $MNTPT/etc/fstab
-	sed -i "s/$old_efi_uuid/UUID=$EFIUUID/" $MNTPT/etc/fstab
+	sudo sed -i "s/$old_root_uuid/UUID=$ROOTUUID/" $MNTPT/etc/fstab
+	sudo sed -i "s/$old_efi_uuid/UUID=$EFIUUID/" $MNTPT/etc/fstab
 }
 
 sync_files() {
-	rsync -aAXv / $MNTPT --ignore-existing \
+	sudo rsync -aAXv / $MNTPT --ignore-existing \
 		--exclude=/{proc,sys,dev} \
 		--exclude=/{etc,run,var,tmp} \
 		--exclude=/{cdrom,media,mnt,rofs,swapfile} \
@@ -236,10 +236,10 @@ sync_files() {
 		--exclude=/{etc*,run*,var*,tmp*}
 
 	#restore backup info 
-	rsync -aAXv /etc-backup/ $MNTPT/etc/
-	rsync -aAXv /run-backup/ $MNTPT/run/
-	rsync -aAXv /var-backup/ $MNTPT/var/
-	rsync -aAXv /tmp-backup/ $MNTPT/tmp/
+	sudo rsync -aAXv /etc-backup/ $MNTPT/etc/
+	sudo rsync -aAXv /run-backup/ $MNTPT/run/
+	sudo rsync -aAXv /var-backup/ $MNTPT/var/
+	sudo rsync -aAXv /tmp-backup/ $MNTPT/tmp/
 
 	update_fstab
 
@@ -248,24 +248,25 @@ sync_files() {
 
 
 update_boot() {
-	chroot /mnt/disk_root update-initramfs -t -c -k $(uname -r)
+	sudo chroot /mnt/disk_root update-initramfs -t -c -k $(uname -r)
 
-	chroot /mnt/disk_root grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ubuntu
-	chroot /mnt/disk_root update-grub
+	sudo chroot /mnt/disk_root grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ubuntu
+	sudo chroot /mnt/disk_root update-grub
 }
 
 reboot_liveOS() {
 	# delete resmatersys service
 
 	#umount somethion
-	umount $MNTPT/proc
-	umount $MNTPT/sys
-	umount $MNTPT/dev
+	sudo umount $MNTPT/proc
+	sudo umount $MNTPT/sys
+	sudo umount $MNTPT/dev
 
-	umount $MNTPT/boot/efi
-	umount $MNTPT
+	sudo umount $MNTPT/boot/efi
+	sudo rm $MNTPT/usr/sbin/restore.sh
+	sudo umount $MNTPT
 
-	#reboot
+	sudo reboot -f
 }
 
 # =================================================================

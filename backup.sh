@@ -10,6 +10,20 @@ ISODIR=$WORKDIR/isofiles
 LIVECDLABEL="ubuntu-22.04"
 CUSTOMISO="custom-ubuntu22.04.iso"
 
+
+mount_vfs() {
+	mount -o bind /proc/ $DUMMYSYS/proc
+	mount -o bind /sys/  $DUMMYSYS/sys
+	mount -o bind /dev/  $DUMMYSYS/dev
+}
+
+umount_vfs() {
+	umount $DUMMYSYS/proc
+	umount $DUMMYSYS/sys
+	umount $DUMMYSYS/dev
+}
+
+
 apt autoremove
 apt autoclean
 apt clean
@@ -22,11 +36,11 @@ mkdir -p $DUMMYSYS
 mkdir -p $ISODIR
 
 
-mkdir -p $ISODIR/{casper,install,preseed}
+mkdir -p $ISODIR/{boot,casper,install,preseed}
 
 
 mkdir -p $DUMMYSYS/etc/casper        #check if necessary
-#mkdir -p $DUMMYSYS/{dev,proc,sys}
+mkdir -p $DUMMYSYS/{dev,proc,sys}
 mkdir -p $DUMMYSYS/{tmp,run,var}
 mkdir -p $DUMMYSYS/{mnt,media}
 chmod ug+rwx,o+rwt $DUMMYSYS/tmp
@@ -92,6 +106,9 @@ if [ ! -d /etc/plymouth ]; then
 	sed -i -e 's/splash//g' $ISODIR/boot/grub/grub.cfg
 fi
 
+cp /boot/vmlinuz-$(uname -r) $ISODIR/casper/vmlinuz
+cp /boot/initrd.img-$(uname -r) $ISODIR/casper/initrd.img
+
 
 #################################finish config grub ###############################
 
@@ -140,11 +157,38 @@ echo "export USERFULLNAME=\"Live session user\"" >> $DUMMYSYS/etc/casper.conf
 echo "export HOST=\"ubuntu\"" >> $DUMMYSYS/etc/casper.conf
 echo "export BUILD_SYSTEM=\"Ubuntu\"" >> $DUMMYSYS/etc/casper.conf
 
-	
+
+create_newliveuser() {
+	chroot $DUMMYSYS useradd -m -s /usr/sbin/restore.sh liveuser
+	chroot $DUMMYSYS usermod -aG sudo liveuser
+
+	cat << EOF > $DUMMYSYS/etc/sudoers.d/90-liveuser-nopasswd
+liveuser ALL=(ALL) NOPASSWD: ALL
+EOF
+}
+
+newliveuser_autologin() {
+	mkdir -p $DUMMYSYS/etc/systemd/system/getty@tty1.service.d/
+	cp $DUMMYSYS/lib/systemd/system/getty@.service $DUMMYSYS/etc/systemd/system/getty@tty1.service.d/override.conf
+	cat << EOF > $DUMMYSYS/etc/systemd/system/getty@tty1.service.d/override.conf
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin liveuser --noclear %I $TERM
+EOF
+	chroot $DUMMYSYS systemctl daemon-reload
+}
 
 
-cp /boot/vmlinuz-$(uname -r) $ISODIR/casper/vmlinuz
-cp /boot/initrd.img-$(uname -r) $ISODIR/casper/initrd.img
+mount_vfs
+
+create_newliveuser
+newliveuser_autologin
+
+umount_vfs
+
+
+#################################finish creating liveuser ###############################
+
 
 
 REALFOLDERS=""
@@ -167,6 +211,8 @@ else
 		$WORKDIR $EXCLUDES 2>>$WORKDIR/remastersys.log
 fi
 
+#################################finish create squashfs ###############################
+
 
 #return Thunar volmanrc back to normal
 #for i in $(ls -d /home/*); do
@@ -175,6 +221,8 @@ fi
 #		cp -f $i/.config/volmanrc /root/.config/Thunar/volmanrc
 #	fi
 #done
+
+
 OLD_DIR=$(pwd)
 cd $ISODIR
 rm md5sum.txt
