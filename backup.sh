@@ -159,7 +159,7 @@ echo "export BUILD_SYSTEM=\"Ubuntu\"" >> $DUMMYSYS/etc/casper.conf
 
 
 create_newliveuser() {
-	chroot $DUMMYSYS useradd -m -s /usr/sbin/restore.sh liveuser
+	chroot $DUMMYSYS useradd -s /usr/sbin/restore.sh liveuser
 	chroot $DUMMYSYS usermod -aG sudo liveuser
 
 	cat << EOF > $DUMMYSYS/etc/sudoers.d/90-liveuser-nopasswd
