@@ -1,7 +1,7 @@
 EXCLUDES="/dev /proc /sys"
 #EXCLUDES="$EXCLUDES /tmp /run /var"
 EXCLUDES="$EXCLUDES /cdrom /lost+found /mnt /media /opt"
-EXCLUDES="$EXCLUDES /swapfile"
+EXCLUDES="$EXCLUDES /swapfile /swap.img /swap*"
 EXCLUDES="$EXCLUDES /home/* /root/*"
 
 WORKDIR=/home/remastersys
