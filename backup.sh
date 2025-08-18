@@ -10,6 +10,28 @@ ISODIR=$WORKDIR/isofiles
 LIVECDLABEL="ubuntu-22.04"
 CUSTOMISO="custom-ubuntu22.04.iso"
 
+check_depends() {
+        # casper for casper
+        # xorriso for xorriso
+        # mtools for mformat
+        # squashfs-tools for mksquashfs
+
+        local depend_packages="casper xorriso mtools squashfs-tools"
+        for pkg in $depend_packages ; do
+                echo -n "check package $pkg ... "
+                ds=$(dpkg --list $pkg | grep -i $pkg | awk '{print $1}')
+                if [ $ds != "ii" ]; then
+                        echo -e "\033[31merror"
+                        echo -e "please use:apt install $pkg\033[0m"
+                        exit
+                else
+                        echo "ok"
+                fi
+        done
+}
+
+check_depends
+
 
 mount_vfs() {
 	mount -o bind /proc/ $DUMMYSYS/proc
