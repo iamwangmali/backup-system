@@ -75,7 +75,7 @@ done
 
 #rsync --exclude='*.log.*' --exclude='*.pid' --exclude='*.bak' --exclude='*.[0-9].gz' --exclude='*.deb' $VAREXCLUDES-a /var/. $DUMMYSYS/var/.
 
-rsync -aAXv --exclude $WORKDIR $VAREXCLUDES / $DUMMYSYS/
+rsync -aAWXP --exclude $WORKDIR $VAREXCLUDES / $DUMMYSYS/
 
 rm -f $DUMMYSYS/etc/mtab
 rm -f $DUMMYSYS/etc/fstab
@@ -83,10 +83,10 @@ rm -f $DUMMYSYS/etc/udev/rules.d/70-persistent*
 ls $DUMMYSYS/var/lib/apt/lists | grep -v ".gpg" | grep -v "lock" | grep -v "partial" | grep -v "auxfiles" | xargs -i rm $DUMMYSYS/var/lib/apt/lists/{} ;  
 
 mkdir -p $DUMMYSYS/{etc-backup,var-backup,tmp-backup,run-backup}
-rsync -a /etc/. $DUMMYSYS/etc-backup/.
-rsync -a /var/. $DUMMYSYS/var-backup/.
-rsync -a /tmp/. $DUMMYSYS/tmp-backup/.
-rsync -a /run/. $DUMMYSYS/run-backup/.
+rsync -aAWXP /etc/. $DUMMYSYS/etc-backup/.
+rsync -aAWXP /var/. $DUMMYSYS/var-backup/.
+rsync -aAWXP /tmp/. $DUMMYSYS/tmp-backup/.
+rsync -aAWXP /run/. $DUMMYSYS/run-backup/.
 	
 #rm -f $DUMMYSYS/etc/hostname
 

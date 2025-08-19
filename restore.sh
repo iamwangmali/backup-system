@@ -19,6 +19,12 @@ EFIPATH=""
 ROOTPATH=""
 MNTPT="/mnt/disk_root"
 
+
+error_process() {
+	echo "error occurred, go to bash."
+	bash
+}
+
 get_root_disk() {
     local root_disk=""
     local root_device=$(sudo df / | awk 'NR==2 {print $1}')
@@ -236,18 +242,40 @@ update_fstab() {
 }
 
 sync_files() {
-	sudo rsync -aAXv / $MNTPT --ignore-existing \
+	#instead of using rsync, unsquashfs directly
+	if true ; then
+		sudo unsquashfs -d $MNTPT -f /cdrom/casper/filesystem.squashfs
+		sudo rm -rf $MNTPT/etc
+		sudo rm -rf $MNTPT/run
+		sudo rm -rf $MNTPT/var
+		sudo rm -rf $MNTPT/tmp
+
+		sudo rsync -aAWXP $MNTPT/etc-backup/ $MNTPT/etc/
+		sudo rsync -aAWXP $MNTPT/run-backup/ $MNTPT/run/
+		sudo rsync -aAWXP $MNTPT/var-backup/ $MNTPT/var/
+		sudo rsync -aAWXP $MNTPT/tmp-backup/ $MNTPT/tmp/
+
+		sudo rm -rf $MNTPT/etc-backup
+		sudo rm -rf $MNTPT/run-backup
+		sudo rm -rf $MNTPT/var-backup
+		sudo rm -rf $MNTPT/tmp-backup
+
+	else
+	sudo rsync -aAWXP / $MNTPT \
 		--exclude=/{proc,sys,dev} \
 		--exclude=/{etc,run,var,tmp} \
 		--exclude=/{cdrom,media,mnt,rofs,swapfile} \
 		--exclude=/{*_1} \
 		--exclude=/{etc*,run*,var*,tmp*}
+	
+		#restore backup info
+		sudo rsync -aAWXP /etc-backup/ $MNTPT/etc/
+		sudo rsync -aAWXP /run-backup/ $MNTPT/run/
+		sudo rsync -aAWXP /var-backup/ $MNTPT/var/
+		sudo rsync -aAWXP /tmp-backup/ $MNTPT/tmp/
 
-	#restore backup info 
-	sudo rsync -aAXv /etc-backup/ $MNTPT/etc/
-	sudo rsync -aAXv /run-backup/ $MNTPT/run/
-	sudo rsync -aAXv /var-backup/ $MNTPT/var/
-	sudo rsync -aAXv /tmp-backup/ $MNTPT/tmp/
+	fi
+
 
 	update_fstab
 
